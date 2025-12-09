@@ -1,0 +1,11 @@
+Model Information:
+* title:	Low Poly Male Body Base
+* source:	https://sketchfab.com/3d-models/low-poly-male-body-base-c6c3dd15792c4b768f087f0831ad249d
+* author:	Mesh-Base (https://sketchfab.com/mesh-base)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Low Poly Male Body Base" (https://sketchfab.com/3d-models/low-poly-male-body-base-c6c3dd15792c4b768f087f0831ad249d) by Mesh-Base (https://sketchfab.com/mesh-base) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
