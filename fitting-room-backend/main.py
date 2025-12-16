@@ -1,11 +1,11 @@
 import uvicorn
 import io
+import os
+from PIL import Image
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
-from fastapi.staticfiles import StaticFiles # 👈 필수 추가
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
-# 로컬 서비스 임포트
 from app.services.local_service import LocalFileService
 from app.services.ai_service import AIEngine
 
@@ -15,11 +15,10 @@ ai_engine = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global local_service, ai_engine
-    print("🚀 서버 시작: 로컬 환경 모드")
+    # 서버 시작 시 서비스 초기화
     local_service = LocalFileService()
     ai_engine = AIEngine()
     yield
-    print("🛑 서버 종료")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -32,56 +31,64 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 📂 정적 파일 서빙 설정
-# http://도메인/static/... 으로 접속하면 static 폴더 내용을 보여줌
+# 정적 파일 서빙
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/")
-def read_root():
-    return {"message": "Local VTON Backend is running!"}
+@app.get("/api/v1/clothes")
+def get_clothes(request: Request):
+    """ 저장된 옷 목록 반환 """
+    paths = local_service.get_cloth_list()
+    base_url = str(request.base_url).rstrip("/")
+    return [f"{base_url}{p}" for p in paths]
+
+@app.post("/api/v1/clothes")
+async def upload_cloth(request: Request, file: UploadFile = File(...)):
+    """ 옷 업로드 및 저장 """
+    path = local_service.save_cloth(file)
+    base_url = str(request.base_url).rstrip("/")
+    return {"url": f"{base_url}{path}"}
 
 @app.post("/api/v1/try-on")
 async def try_on(
-    request: Request, # 👈 현재 도메인을 알아내기 위해 필요
-    file: UploadFile = File(...),
-    body_type: str = Form(...),
-    category: str = Form("upper_body")
+    request: Request,
+    person_image: UploadFile = File(...),
+    cloth_url: str = Form(...),
+    category: str = Form("upper_body") # 👈 [핵심] 프론트에서 보낸 카테고리 받기
 ):
     try:
-        # 1. 원본 옷 저장 (로컬)
-        # file.file 포인터를 복사하므로 read()보다 먼저 수행하거나 주의 필요
-        # 여기서는 바로 저장 서비스로 넘김
-        cloth_url_path = local_service.save_upload_file(file)
+        # 1. 내 사진 읽기
+        person_bytes = await person_image.read()
+        person_img = Image.open(io.BytesIO(person_bytes))
         
-        # 2. AI 처리를 위해 다시 읽기 (포인터 초기화 필요)
-        await file.seek(0)
-        contents = await file.read()
+        # 2. 선택한 옷 이미지 경로 찾기
+        relative_path = "/static" + cloth_url.split("/static")[-1]
+        real_cloth_path = local_service.get_absolute_path(relative_path)
         
-        # 3. 배경 제거 (AI Engine)
-        processed_cloth = ai_engine.remove_background(contents)
-        
-        # 4. 가상 피팅 (AI Engine - Mock)
-        final_image = ai_engine.virtual_try_on(processed_cloth, body_type)
-        
-        # 5. 결과 저장 (로컬)
-        result_url_path = local_service.save_image_from_bytes(final_image)
-        
-        # 6. 풀 URL 생성 (프론트엔드에서 접근 가능하도록)
-        # ngrok을 쓰든 localhost를 쓰든 현재 접속한 주소(base_url)를 붙여줌
-        base_url = str(request.base_url).rstrip("/")
-        full_result_url = f"{base_url}{result_url_path}"
-        full_cloth_url = f"{base_url}{cloth_url_path}"
+        if not os.path.exists(real_cloth_path):
+            raise HTTPException(status_code=404, detail="Cloth image not found")
+            
+        cloth_img = Image.open(real_cloth_path)
 
+        # 3. 옷 배경 제거
+        processed_cloth = ai_engine.remove_background(cloth_img)
+        
+        # 4. 피팅 실행 (카테고리 전달!)
+        # 👇 [핵심] 여기에 category를 꼭 넣어줘야 에러가 안 남!
+        final_image = ai_engine.virtual_try_on(processed_cloth, person_img, category)
+        
+        # 5. 결과 저장
+        result_url_path = local_service.save_image_from_bytes(final_image)
+        base_url = str(request.base_url).rstrip("/")
+        
         return {
             "status": "success",
-            "message": "Fitting complete (Local Storage)",
-            "original_image_url": full_cloth_url,
-            "result_image_url": full_result_url 
+            "result_image_url": f"{base_url}{result_url_path}"
         }
 
     except Exception as e:
-        print(f"에러 발생: {e}")
+        print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)
+    # 포트 8001번 사용
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

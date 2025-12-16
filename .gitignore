@@ -137,3 +137,6 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+
+static/
+temp_uploads/
