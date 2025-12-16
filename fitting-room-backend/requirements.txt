@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+boto3
+python-dotenv
+pillow
+rembg
+onnxruntime-gpu
+aiofiles
