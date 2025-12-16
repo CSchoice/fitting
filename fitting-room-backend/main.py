@@ -32,7 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 📂 정적 파일 서빙 설정 (핵심!)
+# 📂 정적 파일 서빙 설정
 # http://도메인/static/... 으로 접속하면 static 폴더 내용을 보여줌
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
