@@ -113,6 +113,9 @@ results/
 outputs/
 test_images/
 
+# 👈 여기에 추가함 (이미지 저장소 무시)
+static/
+
 # ==========================
 # 6. Frontend (React/Node)
 # ==========================
@@ -134,5 +137,3 @@ build/
 Thumbs.db
 .vscode/
 .idea/
-
-static/
