@@ -85,6 +85,9 @@ async def try_on(
             "result_image_url": f"{base_url}{result_url_path}"
         }
 
+    except HTTPException:
+        # Re-raise HTTPException (like 404) without wrapping in 500
+        raise
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
